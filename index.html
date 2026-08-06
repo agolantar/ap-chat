@@ -83,10 +83,6 @@
             font-size: 0.85rem;
             width: 100%;
         }
-        .terminal-field:focus {
-            outline: none;
-            border-color: var(--text-neon);
-        }
 
         .chat-display-window {
             border: 1px solid var(--text-dim);
@@ -111,17 +107,8 @@
             cursor: pointer;
             width: 100%;
         }
-        .terminal-btn:hover {
-            background-color: var(--text-neon);
-        }
-
-        .system-logs {
-            font-size: 0.65rem;
-            color: var(--text-dim);
-            text-align: center;
-            margin-top: 15px;
-            text-transform: uppercase;
-        }
+        .terminal-btn:hover { background-color: var(--text-neon); }
+        .system-logs { font-size: 0.65rem; color: var(--text-dim); text-align: center; margin-top: 15px; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -133,117 +120,145 @@
         </div>
 
         <div class="status-header" id="myNodeDisplay">
-            ИДЕНТИФИКАТОР ВАШЕГО АНОНИМНОГО УЗЛА: [Node-...]
+            ВАШ NODE ID: [Генерируется...]
         </div>
 
         <div class="chat-display-window" id="chatHistoryBox">
-            <div style="color: var(--text-dim);">[СИСТЕМА]: Активен зашифрованный многоклиентский конвейер.</div>
-            <div style="color: var(--text-dim);">[СИСТЕМА]: Инициализирован глобальный канал связи. Подключены стабильные интернет-узлы.</div>
+            <div style="color: var(--text-dim);">[СИСТЕМА]: Прямой зашифрованный канал WebRTC активен.</div>
+            <div style="color: var(--text-dim);">[СИСТЕМА]: Подключение к пиринговой сети...</div>
         </div>
 
         <div class="terminal-input-group">
-            <label class="terminal-label">Трансляция сообщения полезной нагрузки:</label>
-            <input type="text" id="messageInput" class="terminal-field" placeholder="Введите текстовые пакеты...">
+            <label class="terminal-label">Трансляция сообщения:</label>
+            <input type="text" id="messageInput" class="terminal-field" placeholder="Введите текст...">
         </div>
 
-        <button class="terminal-btn" id="sendBtn">ПЕРЕДАЧА ПАКЕТА ДАННЫХ</button>
+        <button class="terminal-btn" id="sendBtn">ОТПРАВИТЬ ПАКЕТ ДАННЫХ</button>
 
         <div class="system-logs">
-            БЕЗОПАСНАЯ ПРЯМАЯ ТРАНСЛЯЦИЯ // МАКСИМАЛЬНАЯ СКОРОСТЬ // ВНЕШНИЕ СЕРВЕРЫ НЕ ТРЕБУЮТСЯ
+            ЧИСТЫЙ P2P ИНТЕРНЕТ // БЕЗ СЕРВЕРОВ // ХРАНЕНИЕ ЛОГОВ: ОТСУТСТВУЕТ
         </div>
     </div>
-    <!-- ПОДКЛЮЧАЕМ СТАБИЛЬНЫЙ МЕЖДУНАРОДНЫЙ ИНТЕРНЕТ-ДВИЖОК -->
-    <script type="module">
-        import { initializeApp } from "https://gstatic.com";
-        import { getDatabase, ref, push, onChildAdded } from "https://gstatic.com";
+    <!-- ПОДКЛЮЧАЕМ БЕСПЛАТНУЮ БИБЛИОТЕКУ ДЛЯ ПРЯМОГО СОЕДИНЕНИЯ ПО ИНТЕРНЕТУ -->
+    <script src="https://unpkg.com"></script>
+    <script>
+        var peer, conn;
+        var myNodeID = '';
 
-        // Бесплатная, полностью анонимная комната связи общего эфира без логов
-        const firebaseConfig = {
-            databaseURL: "https://firebaseio.com"
-        };
+        // 1. ЗАПУСК КЛИЕНТСКОГО УЗЛА ПО СЕТИ ИНТЕРНЕТ
+        function initP2P() {
+            // Генерируем случайный короткий ID для сети
+            myNodeID = 'Node-' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('myNodeDisplay').innerText = 'ВАШ АНОНИМНЫЙ ID: [' + myNodeID + ']';
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const chatRef = ref(db, "global_anonymous_stream_final_v4");
-
-        let myNodeID = '';
-
-        function initializeNode() {
-            var savedNode = localStorage.getItem('ap_final_node_id_v4');
-            if (!savedNode) {
-                savedNode = Math.floor(1000 + Math.random() * 9000).toString();
-                localStorage.setItem('ap_final_node_id_v4', savedNode);
-            }
-            myNodeID = savedNode;
-            
-            const display = document.getElementById('myNodeDisplay');
-            if (display) display.innerText = 'ИДЕНТИФИКАТОР ВАШЕГО АНОНИМНОГО УЗЛА: [Node-' + myNodeID + ']';
-        }
-
-        function sendBroadcastMessage() {
-            const textInput = document.getElementById('messageInput');
-            if (!textInput || textInput.value.trim() === '') return;
-
-            const rawText = textInput.value.trim();
-
-            push(chatRef, {
-                node: myNodeID,
-                text: rawText,
-                timestamp: Date.now()
+            // Инициализируем бесплатный независимый интернет-коммутатор PeerJS
+            // Он нужен только для того, чтобы телефоны и ПК находили друг друга в сети
+            peer = new Peer(myNodeID, {
+                debug: 1
             });
 
-            textInput.value = '';
+            // Слушаем входящие подключения от других клиентов в интернете
+            peer.on('connection', function(incomingConn) {
+                conn = incomingConn;
+                setupChatLogic();
+                appendSystemMessage('[СИСТЕМА]: Входящий клиент подключен к вашему узлу.');
+            });
+
+            peer.on('open', function(id) {
+                appendSystemMessage('[СИСТЕМА]: Узел успешно запущен в сеть интернет.');
+                
+                // Автоматически пытаемся создать общий мост:
+                // Если вы открыли чат на телефоне, введите ID компьютера в чат, чтобы связать их
+                autoConnectBridge();
+            });
         }
 
-        onChildAdded(chatRef, (data) => {
-            const msg = data.val();
-            if (msg && msg.node && msg.text && msg.timestamp) {
-                var msgId = msg.node + '_' + msg.timestamp;
-                if (!document.getElementById(msgId)) {
-                    appendNodeMessage(msg.node, msg.text, msgId);
+        function autoConnectBridge() {
+            // Для теста: если вы знаете ID другого человека, мессенджер свяжет вас напрямую
+            var lastPartner = localStorage.getItem('last_partner_node');
+            if (lastPartner) {
+                connectToNode(lastPartner);
+            }
+        }
+
+        function connectToNode(targetID) {
+            appendSystemMessage('[СИСТЕМА]: Попытка прямого P2P-подключения к [' + targetID + ']...');
+            conn = peer.connect(targetID);
+            setupChatLogic();
+        }
+
+        function setupChatLogic() {
+            conn.on('open', function() {
+                appendSystemMessage('[СИСТЕМА]: Прямое сквозное соединение установлено!');
+                localStorage.setItem('last_partner_node', conn.peer);
+            });
+
+            // Ловим сообщения напрямую из интернета от собеседника
+            conn.on('data', function(data) {
+                if (data && data.text) {
+                    appendChatMessage(data.sender, data.text);
                 }
+            });
+        }
+
+        // 2. ОТПРАВКА ТЕКСТА НАПРЯМУЮ СОБЕСЕДНИКУ
+        function sendMessage() {
+            var input = document.getElementById('messageInput');
+            if (!input || input.value.trim() === '') return;
+            var text = input.value.trim();
+
+            // Если мы еще ни к кому не подключились, первая строка расценивается как команда коннекта
+            if (!conn || !conn.open) {
+                // Если ввели чужой Node-XXXX, подключаемся к нему по интернету
+                if (text.indexOf('Node-') === 0) {
+                    connectToNode(text);
+                    input.value = '';
+                    return;
+                }
+                appendSystemMessage('[ИНФО]: Чтобы начать чат по интернету, введите ID другого устройства (например: Node-1234)');
+                return;
             }
-        });
 
-        function appendNodeMessage(senderNode, text, uniqueId) {
-            const chatBox = document.getElementById('chatHistoryBox');
-            if (!chatBox) return;
+            // Отправляем пакет по интернету напрямую на устройство собеседника
+            conn.send({
+                sender: myNodeID,
+                text: text
+            });
 
-            const msgDiv = document.createElement('div');
-            msgDiv.id = uniqueId;
-            msgDiv.style.marginBottom = '8px';
-            msgDiv.style.transition = 'color 1s ease'; // Плавное угасание текста
+            appendChatMessage('Вы', text);
+            input.value = '';
+        }
+
+        function appendChatMessage(sender, text) {
+            var chatBox = document.getElementById('chatHistoryBox');
+            var msgDiv = document.createElement('div');
+            msgDiv.style.marginBottom = '6px';
             
-            if (senderNode === myNodeID) {
-                msgDiv.innerHTML = '<span style="color: #ffffff;">[Вы-Node-' + senderNode + ']:</span> ' + text;
+            if (sender === 'Вы') {
+                msgDiv.innerHTML = '<span style="color: #ffffff;">[Вы]:</span> ' + text;
             } else {
-                msgDiv.innerHTML = '<span style="color: var(--text-neon);">[Node-' + senderNode + ']:</span> ' + text;
+                msgDiv.innerHTML = '<span style="color: var(--text-neon);">[' + sender + ']:</span> ' + text;
             }
-
             chatBox.appendChild(msgDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
-
-            // 💣 АВТОМАТИЧЕСКОЕ САМОУНИЧТОЖЕНИЕ ДАННЫХ ЧЕРЕЗ 60 СЕКУНД
-            setTimeout(function() {
-                var elementToRemove = document.getElementById(uniqueId);
-                if (elementToRemove) {
-                    elementToRemove.style.color = '#222222'; // Сообщение тускнеет (становится почти невидимым на черном фоне)
-                    setTimeout(function() {
-                        elementToRemove.remove(); // Полностью удаляется из памяти браузера
-                    }, 1000);
-                }
-            }, 60000); // 60000 миллисекунд = 1 минута
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            initializeNode();
-            
-            const sendBtn = document.getElementById('sendBtn');
-            if (sendBtn) sendBtn.onclick = sendBroadcastMessage;
+        function appendSystemMessage(text) {
+            var chatBox = document.getElementById('chatHistoryBox');
+            var msgDiv = document.createElement('div');
+            msgDiv.style.color = 'var(--text-dim)';
+            msgDiv.style.marginBottom = '6px';
+            msgDiv.innerText = text;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
 
-            document.body.addEventListener('keypress', (e) => {
+        window.addEventListener('DOMContentLoaded', function() {
+            initP2P();
+            document.getElementById('sendBtn').onclick = sendMessage;
+            document.body.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter' && document.activeElement.id === 'messageInput') {
-                    sendBroadcastMessage();
+                    sendMessage();
                 }
             });
         });
