@@ -87,7 +87,7 @@
         .chat-display-window {
             border: 1px solid var(--text-dim);
             background-color: #000000;
-            height: 280px;
+            height: 240px;
             padding: 12px;
             overflow-y: auto;
             font-size: 0.8rem;
@@ -120,113 +120,100 @@
         </div>
 
         <div class="status-header" id="myNodeDisplay">
-            ВАШ NODE ID: [Генерируется...]
+            ВАШ UIN: [Подключение...]
+        </div>
+
+        <!-- Поле для ввода UIN соседа/собеседника -->
+        <div class="terminal-input-group">
+            <label class="terminal-label">UIN СОБЕСЕДНИКА (9 ЦИФР):</label>
+            <input type="text" id="partnerUinInput" class="terminal-field" placeholder="Введите UIN соседа..." maxlength="9">
         </div>
 
         <div class="chat-display-window" id="chatHistoryBox">
-            <div style="color: var(--text-dim);">[СИСТЕМА]: Прямой зашифрованный канал WebRTC активен.</div>
-            <div style="color: var(--text-dim);">[СИСТЕМА]: Подключение к пиринговой сети...</div>
+            <div style="color: var(--text-dim);">[СИСТЕМА]: Инициализация интернет-канала WebSockets...</div>
         </div>
 
         <div class="terminal-input-group">
             <label class="terminal-label">Трансляция сообщения:</label>
-            <input type="text" id="messageInput" class="terminal-field" placeholder="Введите текст...">
+            <input type="text" id="messageInput" class="terminal-field" placeholder="Введите текст пакета...">
         </div>
 
         <button class="terminal-btn" id="sendBtn">ОТПРАВИТЬ ПАКЕТ ДАННЫХ</button>
 
         <div class="system-logs">
-            ЧИСТЫЙ P2P ИНТЕРНЕТ // БЕЗ СЕРВЕРОВ // ХРАНЕНИЕ ЛОГОВ: ОТСУТСТВУЕТ
+            АННОНИМНЫЙ МЕЖДУГОРОДНИЙ ИНТЕРНЕТ ЧАТ // БЕЗ СЛЕДОВ // ЛОГИРОВАНИЕ: OFF
         </div>
     </div>
-    <!-- ПОДКЛЮЧАЕМ БЕСПЛАТНУЮ БИБЛИОТЕКУ ДЛЯ ПРЯМОГО СОЕДИНЕНИЯ ПО ИНТЕРНЕТУ -->
-    <script src="https://unpkg.com"></script>
+
+    <!-- ИНТЕРНЕТ ЛОГИКА СВЯЗИ -->
     <script>
-        var peer, conn;
-        var myNodeID = '';
+        var ws;
+        var myUIN = '';
 
-        // 1. ЗАПУСК КЛИЕНТСКОГО УЗЛА ПО СЕТИ ИНТЕРНЕТ
-        function initP2P() {
-            // Генерируем случайный короткий ID для сети
-            myNodeID = 'Node-' + Math.floor(1000 + Math.random() * 9000);
-            document.getElementById('myNodeDisplay').innerText = 'ВАШ АНОНИМНЫЙ ID: [' + myNodeID + ']';
-
-            // Инициализируем бесплатный независимый интернет-коммутатор PeerJS
-            // Он нужен только для того, чтобы телефоны и ПК находили друг друга в сети
-            peer = new Peer(myNodeID, {
-                debug: 1
-            });
-
-            // Слушаем входящие подключения от других клиентов в интернете
-            peer.on('connection', function(incomingConn) {
-                conn = incomingConn;
-                setupChatLogic();
-                appendSystemMessage('[СИСТЕМА]: Входящий клиент подключен к вашему узлу.');
-            });
-
-            peer.on('open', function(id) {
-                appendSystemMessage('[СИСТЕМА]: Узел успешно запущен в сеть интернет.');
-                
-                // Автоматически пытаемся создать общий мост:
-                // Если вы открыли чат на телефоне, введите ID компьютера в чат, чтобы связать их
-                autoConnectBridge();
-            });
-        }
-
-        function autoConnectBridge() {
-            // Для теста: если вы знаете ID другого человека, мессенджер свяжет вас напрямую
-            var lastPartner = localStorage.getItem('last_partner_node');
-            if (lastPartner) {
-                connectToNode(lastPartner);
+        function initWebSocketChat() {
+            // Генерируем постоянный 9-значный UIN для устройства, как в классической Аське
+            var savedUIN = localStorage.getItem('ap_final_icq_uin');
+            if (!savedUIN) {
+                savedUIN = Math.floor(100000000 + Math.random() * 900000000).toString();
+                localStorage.setItem('ap_final_icq_uin', savedUIN);
             }
-        }
+            myUIN = savedUIN;
+            document.getElementById('myNodeDisplay').innerText = 'ВАШ АНОНИМНЫЙ UIN: [' + myUIN + ']';
 
-        function connectToNode(targetID) {
-            appendSystemMessage('[СИСТЕМА]: Попытка прямого P2P-подключения к [' + targetID + ']...');
-            conn = peer.connect(targetID);
-            setupChatLogic();
-        }
+            // Подключаемся к стабильному международному WebSocket-серверу для трансляции данных
+            ws = new WebSocket('wss://://socketsbay.com');
 
-        function setupChatLogic() {
-            conn.on('open', function() {
-                appendSystemMessage('[СИСТЕМА]: Прямое сквозное соединение установлено!');
-                localStorage.setItem('last_partner_node', conn.peer);
-            });
+            ws.onopen = function() {
+                appendSystemMessage('[СИСТЕМА]: Подключение к интернет-матрице выполнено успешно.');
+                appendSystemMessage('[ИНФО]: Введите UIN соседа в поле выше и отправьте сообщение.');
+            };
 
-            // Ловим сообщения напрямую из интернета от собеседника
-            conn.on('data', function(data) {
-                if (data && data.text) {
-                    appendChatMessage(data.sender, data.text);
+            // Принимаем пакеты из интернета
+            ws.onmessage = function(event) {
+                try {
+                    var data = JSON.parse(event.data);
+                    // Фильтруем сообщения: выводим на экран только то, что отправлено ИМЕННО на наш UIN
+                    if (data && data.target === myUIN) {
+                        appendChatMessage(data.sender, data.text);
+                    }
+                } catch(e) {
+                    // Игнорируем чужой системный трафик
                 }
-            });
+            };
+
+            ws.onerror = function() {
+                appendSystemMessage('[ОШИБКА]: Сетевой сбой эфира. Попытка переподключения...');
+            };
         }
 
-        // 2. ОТПРАВКА ТЕКСТА НАПРЯМУЮ СОБЕСЕДНИКУ
-        function sendMessage() {
-            var input = document.getElementById('messageInput');
-            if (!input || input.value.trim() === '') return;
-            var text = input.value.trim();
-
-            // Если мы еще ни к кому не подключились, первая строка расценивается как команда коннекта
-            if (!conn || !conn.open) {
-                // Если ввели чужой Node-XXXX, подключаемся к нему по интернету
-                if (text.indexOf('Node-') === 0) {
-                    connectToNode(text);
-                    input.value = '';
-                    return;
-                }
-                appendSystemMessage('[ИНФО]: Чтобы начать чат по интернету, введите ID другого устройства (например: Node-1234)');
+        // ОТПРАВКА СООБЩЕНИЯ КОНКРЕТНОМУ СОСЕДУ
+        function sendDirectMessage() {
+            var textInput = document.getElementById('messageInput');
+            var partnerInput = document.getElementById('partnerUinInput');
+            
+            if (!textInput || textInput.value.trim() === '') return;
+            
+            var targetPartner = partnerInput.value.trim();
+            if (targetPartner.length !== 9) {
+                alert("ОШИБКА: UIN собеседника должен состоять строго из 9 цифр.");
                 return;
             }
 
-            // Отправляем пакет по интернету напрямую на устройство собеседника
-            conn.send({
-                sender: myNodeID,
-                text: text
-            });
+            var rawMessage = textInput.value.trim();
 
-            appendChatMessage('Вы', text);
-            input.value = '';
+            // Формируем пакет данных, указывая отправителя и цель
+            var packet = {
+                sender: myUIN,
+                target: targetPartner,
+                text: rawMessage
+            };
+
+            // Передаем пакет в интернет
+            ws.send(JSON.stringify(packet));
+
+            // Отображаем у себя на экране
+            appendChatMessage('Вы', rawMessage);
+            textInput.value = '';
         }
 
         function appendChatMessage(sender, text) {
@@ -254,11 +241,11 @@
         }
 
         window.addEventListener('DOMContentLoaded', function() {
-            initP2P();
-            document.getElementById('sendBtn').onclick = sendMessage;
+            initWebSocketChat();
+            document.getElementById('sendBtn').onclick = sendDirectMessage;
             document.body.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter' && document.activeElement.id === 'messageInput') {
-                    sendMessage();
+                    sendDirectMessage();
                 }
             });
         });
