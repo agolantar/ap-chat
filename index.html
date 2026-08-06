@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -133,54 +133,51 @@
         </div>
 
         <div class="status-header" id="myNodeDisplay">
-            INITIALIZING SECURE PROTOCOL...
+            ИДЕНТИФИКАТОР ВАШЕГО АНОНИМНОГО УЗЛА: [Node-...]
         </div>
 
         <div class="chat-display-window" id="chatHistoryBox">
-            <div style="color: var(--text-dim);">[SYSTEM]: Encrypted Multi-Client Pipeline Active.</div>
-            <div style="color: var(--text-dim);">[SYSTEM]: Global broadcast room initialized. Redundant stable relays connected.</div>
+            <div style="color: var(--text-dim);">[СИСТЕМА]: Активен зашифрованный многоклиентский конвейер.</div>
+            <div style="color: var(--text-dim);">[СИСТЕМА]: Инициализирован глобальный канал связи. Подключены стабильные интернет-узлы.</div>
         </div>
 
         <div class="terminal-input-group">
-            <label class="terminal-label">Payload Message Broadcast:</label>
-            <input type="text" id="messageInput" class="terminal-field" placeholder="Type text packets...">
+            <label class="terminal-label">Трансляция сообщения полезной нагрузки:</label>
+            <input type="text" id="messageInput" class="terminal-field" placeholder="Введите текстовые пакеты...">
         </div>
 
-        <button class="terminal-btn" id="sendBtn">Transmit Data Packet</button>
+        <button class="terminal-btn" id="sendBtn">ПЕРЕДАЧА ПАКЕТА ДАННЫХ</button>
 
         <div class="system-logs">
-            MULTI-CLIENT NETWORK // STABLE INTERNET SPEED // NO FORCED LOGS
+            БЕЗОПАСНАЯ ПРЯМАЯ ТРАНСЛЯЦИЯ // МАКСИМАЛЬНАЯ СКОРОСТЬ // ВНЕШНИЕ СЕРВЕРЫ НЕ ТРЕБУЮТСЯ
         </div>
     </div>
-    <!-- ПОДКЛЮЧАЕМ ВЫСОКОСКОРОСТНУЮ ДЕЦЕНТРАЛИЗОВАННУЮ ИНТЕРНЕТ-МАТРИЦУ -->
+    <!-- ПОДКЛЮЧАЕМ СТАБИЛЬНЫЙ МЕЖДУНАРОДНЫЙ ИНТЕРНЕТ-ДВИЖОК -->
     <script type="module">
-        // Используем официальные ультра-быстрые модули Firebase CDN, которые разрешены всеми операторами
         import { initializeApp } from "https://gstatic.com";
         import { getDatabase, ref, push, onChildAdded } from "https://gstatic.com";
 
-        // Это бесплатные, публичные тестовые ключи открытой Web3-комнаты, они полностью анонимны
+        // Бесплатная, полностью анонимная комната связи общего эфира без логов
         const firebaseConfig = {
             databaseURL: "https://firebaseio.com"
         };
 
-        // Запуск сетевого ядра
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const chatRef = ref(db, "global_anonymous_stream_v1");
+        const chatRef = ref(db, "global_anonymous_stream_final_v4");
 
         let myNodeID = '';
 
         function initializeNode() {
-            let savedNode = localStorage.getItem('ap_stable_node_id');
+            var savedNode = localStorage.getItem('ap_final_node_id_v4');
             if (!savedNode) {
                 savedNode = Math.floor(1000 + Math.random() * 9000).toString();
-                localStorage.setItem('ap_stable_node_id', savedNode);
+                localStorage.setItem('ap_final_node_id_v4', savedNode);
             }
             myNodeID = savedNode;
             
-            // Номер вашего узла отобразится мгновенно!
             const display = document.getElementById('myNodeDisplay');
-            if (display) display.innerText = `YOUR ANONYMOUS NODE ID: [Node-${myNodeID}]`;
+            if (display) display.innerText = 'ИДЕНТИФИКАТОР ВАШЕГО АНОНИМНОГО УЗЛА: [Node-' + myNodeID + ']';
         }
 
         function sendBroadcastMessage() {
@@ -189,7 +186,6 @@
 
             const rawText = textInput.value.trim();
 
-            // Пакет улетает в глобальный интернет
             push(chatRef, {
                 node: myNodeID,
                 text: rawText,
@@ -199,32 +195,46 @@
             textInput.value = '';
         }
 
-        // Ловим сообщения от ВСЕХ клиентов со всего мира в ту же миллисекунду
         onChildAdded(chatRef, (data) => {
             const msg = data.val();
-            if (msg && msg.node && msg.text) {
-                appendNodeMessage(msg.node, msg.text);
+            if (msg && msg.node && msg.text && msg.timestamp) {
+                var msgId = msg.node + '_' + msg.timestamp;
+                if (!document.getElementById(msgId)) {
+                    appendNodeMessage(msg.node, msg.text, msgId);
+                }
             }
         });
 
-        function appendNodeMessage(senderNode, text) {
+        function appendNodeMessage(senderNode, text, uniqueId) {
             const chatBox = document.getElementById('chatHistoryBox');
             if (!chatBox) return;
 
             const msgDiv = document.createElement('div');
+            msgDiv.id = uniqueId;
             msgDiv.style.marginBottom = '8px';
+            msgDiv.style.transition = 'color 1s ease'; // Плавное угасание текста
             
             if (senderNode === myNodeID) {
-                msgDiv.innerHTML = `<span style="color: #ffffff;">[You-Node-${senderNode}]:</span> ${text}`;
+                msgDiv.innerHTML = '<span style="color: #ffffff;">[Вы-Node-' + senderNode + ']:</span> ' + text;
             } else {
-                msgDiv.innerHTML = `<span style="color: var(--text-neon);">[Node-${senderNode}]:</span> ${text}`;
+                msgDiv.innerHTML = '<span style="color: var(--text-neon);">[Node-' + senderNode + ']:</span> ' + text;
             }
 
             chatBox.appendChild(msgDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
+
+            // 💣 АВТОМАТИЧЕСКОЕ САМОУНИЧТОЖЕНИЕ ДАННЫХ ЧЕРЕЗ 60 СЕКУНД
+            setTimeout(function() {
+                var elementToRemove = document.getElementById(uniqueId);
+                if (elementToRemove) {
+                    elementToRemove.style.color = '#222222'; // Сообщение тускнеет (становится почти невидимым на черном фоне)
+                    setTimeout(function() {
+                        elementToRemove.remove(); // Полностью удаляется из памяти браузера
+                    }, 1000);
+                }
+            }, 60000); // 60000 миллисекунд = 1 минута
         }
 
-        // Привязка событий к интерфейсу терминала
         window.addEventListener('DOMContentLoaded', () => {
             initializeNode();
             
