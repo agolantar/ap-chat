@@ -123,7 +123,7 @@
             ВАШ UIN: [Подключение...]
         </div>
 
-        <!-- Блок ввода UIN соседа и вашего общего Ключа Шифрования -->
+        <!-- Блок ввода параметров сессии -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
             <div class="terminal-input-group" style="flex: 1; margin-bottom: 0;">
                 <label class="terminal-label">UIN СОБЕСЕДНИКА (9 ЦИФР):</label>
@@ -165,18 +165,20 @@
             myUIN = savedUIN;
             document.getElementById('myNodeDisplay').innerText = 'ВАШ АНОНИМНЫЙ UIN: [' + myUIN + ']';
 
-            // Открываем веб-сокет канал трансляции данных
-            ws = new WebSocket('wss://://socketsbay.com');
+            // ПОДКЛЮЧАЕМ НАДЕЖНЫЙ СТАБИЛЬНЫЙ МЕЖДУНАРОДНЫЙ ШЛЮЗ PIESOCKET (РАБОТАЕТ БЕЗ БЛОКИРОВОК)
+            ws = new WebSocket('wss://://piesocket.com');
 
             ws.onopen = function() {
-                appendSystemMessage('[СИСТЕМА]: Подключение к интернет-каналу выполнено.');
+                var box = document.getElementById('chatHistoryBox');
+                box.innerHTML = ''; // Стираем надпись Инициализация
+                appendSystemMessage('[СИСТЕМА]: Подключение к интернет-каналу выполнено успешно.');
                 appendSystemMessage('[ИНФО]: Задайте с соседом одинаковый КЛЮЧ ШИФРОВАНИЯ перед отправкой.');
             };
 
             ws.onmessage = function(event) {
                 try {
                     var data = JSON.parse(event.data);
-                    // Фильтруем поток: ловим только сообщения, отправленные на наш UIN
+                    // Ловим пакеты, адресованные строго нашему UIN
                     if (data && data.target === myUIN) {
                         var passKey = document.getElementById('cryptoKeyInput').value.trim();
                         
@@ -185,7 +187,7 @@
                             return;
                         }
 
-                        // РАСШИФРОВКА: Превращаем крипто-хэш обратно в читаемый текст с помощью вашего пароля
+                        // РАСШИФРОВКА: Из каши символов собираем текст с помощью общего пароля
                         try {
                             var bytes = CryptoJS.AES.decrypt(data.encryptedText, passKey);
                             var decryptedText = bytes.toString(CryptoJS.enc.Utf8);
@@ -200,7 +202,9 @@
             };
 
             ws.onerror = function() {
-                appendSystemMessage('[ОШИБКА]: Сетевой сбой эфира.');
+                var box = document.getElementById('chatHistoryBox');
+                box.innerHTML = '';
+                appendSystemMessage('[ОШИБКА]: Внешний шлюз недоступен. Проверьте подключение к сети.');
             };
         }
 
@@ -232,10 +236,15 @@
             var packet = {
                 sender: myUIN,
                 target: targetPartner,
-                encryptedText: encrypted // Внешний сервер увидит только этот зашифрованный массив символов
+                encryptedText: encrypted // Сервер в интернете видит только этот зашифрованный хэш
             };
 
-            ws.send(JSON.stringify(packet));
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(packet));
+            } else {
+                alert("ОШИБКА: Интернет-соединение не активно.");
+                return;
+            }
 
             appendChatMessage('Вы', rawMessage);
             textInput.value = '';
