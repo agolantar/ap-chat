@@ -87,7 +87,7 @@
         .chat-display-window {
             border: 1px solid var(--text-dim);
             background-color: #000000;
-            height: 240px;
+            height: 220px;
             padding: 12px;
             overflow-y: auto;
             font-size: 0.8rem;
@@ -123,95 +123,120 @@
             ВАШ UIN: [Подключение...]
         </div>
 
-        <!-- Поле для ввода UIN соседа/собеседника -->
-        <div class="terminal-input-group">
-            <label class="terminal-label">UIN СОБЕСЕДНИКА (9 ЦИФР):</label>
-            <input type="text" id="partnerUinInput" class="terminal-field" placeholder="Введите UIN соседа..." maxlength="9">
+        <!-- Блок ввода UIN соседа и вашего общего Ключа Шифрования -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <div class="terminal-input-group" style="flex: 1; margin-bottom: 0;">
+                <label class="terminal-label">UIN СОБЕСЕДНИКА (9 ЦИФР):</label>
+                <input type="text" id="partnerUinInput" class="terminal-field" placeholder="000000000" maxlength="9">
+            </div>
+            <div class="terminal-input-group" style="flex: 1; margin-bottom: 0;">
+                <label class="terminal-label">КЛЮЧ ШИФРОВАНИЯ (AES):</label>
+                <input type="password" id="cryptoKeyInput" class="terminal-field" placeholder="Пароль с соседом...">
+            </div>
         </div>
 
         <div class="chat-display-window" id="chatHistoryBox">
-            <div style="color: var(--text-dim);">[СИСТЕМА]: Инициализация интернет-канала WebSockets...</div>
+            <div style="color: var(--text-dim);">[СИСТЕМА]: Инициализация интернет-канала...</div>
         </div>
 
         <div class="terminal-input-group">
-            <label class="terminal-label">Трансляция сообщения:</label>
-            <input type="text" id="messageInput" class="terminal-field" placeholder="Введите текст пакета...">
+            <label class="terminal-label">Трансляция зашифрованного сообщения:</label>
+            <input type="text" id="messageInput" class="terminal-field" placeholder="Введите текст...">
         </div>
 
-        <button class="terminal-btn" id="sendBtn">ОТПРАВИТЬ ПАКЕТ ДАННЫХ</button>
+        <button class="terminal-btn" id="sendBtn">ОТПРАВИТЬ ЗАШИФРОВАННЫЙ ПАКЕТ</button>
 
         <div class="system-logs">
-            АННОНИМНЫЙ МЕЖДУГОРОДНИЙ ИНТЕРНЕТ ЧАТ // БЕЗ СЛЕДОВ // ЛОГИРОВАНИЕ: OFF
+            END-TO-END CRYPTO v1.0 // СЕРВЕР ВИДИТ ТОЛЬКО МУСОР // LOGS: NULL
         </div>
     </div>
-
-    <!-- ИНТЕРНЕТ ЛОГИКА СВЯЗИ -->
+    <!-- ПОДКЛЮЧАЕМ НАДЕЖНЫЙ КРИПТОГРАФИЧЕСКИЙ ШИФРАТОР CRYPTO-JS -->
+    <script src="https://cloudflare.com"></script>
     <script>
         var ws;
         var myUIN = '';
 
-        function initWebSocketChat() {
-            // Генерируем постоянный 9-значный UIN для устройства, как в классической Аське
-            var savedUIN = localStorage.getItem('ap_final_icq_uin');
+        function initCryptoChat() {
+            var savedUIN = localStorage.getItem('ap_crypto_icq_uin');
             if (!savedUIN) {
                 savedUIN = Math.floor(100000000 + Math.random() * 900000000).toString();
-                localStorage.setItem('ap_final_icq_uin', savedUIN);
+                localStorage.setItem('ap_crypto_icq_uin', savedUIN);
             }
             myUIN = savedUIN;
             document.getElementById('myNodeDisplay').innerText = 'ВАШ АНОНИМНЫЙ UIN: [' + myUIN + ']';
 
-            // Подключаемся к стабильному международному WebSocket-серверу для трансляции данных
+            // Открываем веб-сокет канал трансляции данных
             ws = new WebSocket('wss://://socketsbay.com');
 
             ws.onopen = function() {
-                appendSystemMessage('[СИСТЕМА]: Подключение к интернет-матрице выполнено успешно.');
-                appendSystemMessage('[ИНФО]: Введите UIN соседа в поле выше и отправьте сообщение.');
+                appendSystemMessage('[СИСТЕМА]: Подключение к интернет-каналу выполнено.');
+                appendSystemMessage('[ИНФО]: Задайте с соседом одинаковый КЛЮЧ ШИФРОВАНИЯ перед отправкой.');
             };
 
-            // Принимаем пакеты из интернета
             ws.onmessage = function(event) {
                 try {
                     var data = JSON.parse(event.data);
-                    // Фильтруем сообщения: выводим на экран только то, что отправлено ИМЕННО на наш UIN
+                    // Фильтруем поток: ловим только сообщения, отправленные на наш UIN
                     if (data && data.target === myUIN) {
-                        appendChatMessage(data.sender, data.text);
+                        var passKey = document.getElementById('cryptoKeyInput').value.trim();
+                        
+                        if (!passKey) {
+                            appendChatMessage(data.sender, '[ЗАБЛОКИРОВАНО]: Установите ключ шифрования, чтобы прочесть.');
+                            return;
+                        }
+
+                        // РАСШИФРОВКА: Превращаем крипто-хэш обратно в читаемый текст с помощью вашего пароля
+                        try {
+                            var bytes = CryptoJS.AES.decrypt(data.encryptedText, passKey);
+                            var decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+                            
+                            if (!decryptedText) throw new Error();
+                            appendChatMessage(data.sender, decryptedText);
+                        } catch(err) {
+                            appendChatMessage(data.sender, '[ОШИБКА РАСШИФРОВКИ]: Неверный ключ шифрования.');
+                        }
                     }
-                } catch(e) {
-                    // Игнорируем чужой системный трафик
-                }
+                } catch(e) {}
             };
 
             ws.onerror = function() {
-                appendSystemMessage('[ОШИБКА]: Сетевой сбой эфира. Попытка переподключения...');
+                appendSystemMessage('[ОШИБКА]: Сетевой сбой эфира.');
             };
         }
 
-        // ОТПРАВКА СООБЩЕНИЯ КОНКРЕТНОМУ СОСЕДУ
-        function sendDirectMessage() {
+        // ЗАШИФРОВКА И ОТПРАВКА
+        function sendEncryptedMessage() {
             var textInput = document.getElementById('messageInput');
             var partnerInput = document.getElementById('partnerUinInput');
+            var keyInput = document.getElementById('cryptoKeyInput');
             
             if (!textInput || textInput.value.trim() === '') return;
             
             var targetPartner = partnerInput.value.trim();
+            var passKey = keyInput.value.trim();
+
             if (targetPartner.length !== 9) {
-                alert("ОШИБКА: UIN собеседника должен состоять строго из 9 цифр.");
+                alert("ОШИБКА: Укажите 9-значный UIN соседа.");
+                return;
+            }
+            if (!passKey) {
+                alert("КРИТИЧЕСКАЯ ОШИБКА: Без Ключа Шифрования отправка запрещена ради вашей анонимности!");
                 return;
             }
 
             var rawMessage = textInput.value.trim();
 
-            // Формируем пакет данных, указывая отправителя и цель
+            // ШИФРОВАНИЕ: Полностью перемешиваем исходный текст алгоритмом AES на основе пароля
+            var encrypted = CryptoJS.AES.encrypt(rawMessage, passKey).toString();
+
             var packet = {
                 sender: myUIN,
                 target: targetPartner,
-                text: rawMessage
+                encryptedText: encrypted // Внешний сервер увидит только этот зашифрованный массив символов
             };
 
-            // Передаем пакет в интернет
             ws.send(JSON.stringify(packet));
 
-            // Отображаем у себя на экране
             appendChatMessage('Вы', rawMessage);
             textInput.value = '';
         }
@@ -241,11 +266,11 @@
         }
 
         window.addEventListener('DOMContentLoaded', function() {
-            initWebSocketChat();
-            document.getElementById('sendBtn').onclick = sendDirectMessage;
+            initCryptoChat();
+            document.getElementById('sendBtn').onclick = sendEncryptedMessage;
             document.body.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter' && document.activeElement.id === 'messageInput') {
-                    sendDirectMessage();
+                    sendEncryptedMessage();
                 }
             });
         });
