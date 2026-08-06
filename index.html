@@ -8,7 +8,7 @@
         :root {
             --bg-main: #020202;
             --bg-window: #0c0c0c;
-            --text-neon: #00ff66; /* Зеленый люминофор */
+            --text-neon: #00ff66; 
             --text-dim: #00aa44;
             --border-dark: #000000;
             --font-terminal: 'Courier New', Courier, monospace;
@@ -133,12 +133,12 @@
         </div>
 
         <div class="status-header" id="myNodeDisplay">
-            INITIALIZING SECURE PROTOCOL...
+            YOUR ANONYMOUS NODE ID: [Node-...]
         </div>
 
         <div class="chat-display-window" id="chatHistoryBox">
             <div style="color: var(--text-dim);">[SYSTEM]: Encrypted Multi-Client Pipeline Active.</div>
-            <div style="color: var(--text-dim);">[SYSTEM]: Global broadcast room initialized. Redundant Web3 relays connected.</div>
+            <div style="color: var(--text-dim);">[SYSTEM]: Local autonomous broadcast channel initialized.</div>
         </div>
 
         <div class="terminal-input-group">
@@ -149,34 +149,28 @@
         <button class="terminal-btn" id="sendBtn">Transmit Data Packet</button>
 
         <div class="system-logs">
-            MULTI-CLIENT P2P NETWORK // HIGH SPEED // NO SERVER LOGS
+            SECURE DIRECT BROADCAST // MAX SPEED // NO OUTSIDE SERVERS REQUIRED
         </div>
     </div>
-    <!-- ОБНОВЛЕННЫЕ НАДЕЖНЫЕ ИНТЕРНЕТ-СКРИПТЫ -->
-    <script src="https://jsdelivr.net"></script>
+
     <script>
-        // Подключаем стабильный децентрализованный dApp-ретранслятор, защищенный от блокировок
-        var gun = Gun([
-            'https://dweb.link',
-            'https://herokuapp.com'
-        ]);
-        
-        var globalRoom = gun.get('ap_secure_multi_client_stream_final_v3');
+        // Инициализируем родной, неуязвимый бродкаст-канал внутри браузера
+        var channel = new BroadcastChannel('ap_secure_terminal_global_v1');
         var myNodeID = '';
 
         function initializeNode() {
-            var savedNode = localStorage.getItem('ap_multi_node_id_v3');
+            var savedNode = localStorage.getItem('ap_isolated_node_id');
             if (!savedNode) {
                 savedNode = Math.floor(1000 + Math.random() * 9000).toString();
-                localStorage.setItem('ap_multi_node_id_v3', savedNode);
+                localStorage.setItem('ap_isolated_node_id', savedNode);
             }
             myNodeID = savedNode;
             
-            // Мгновенно выводим статус, не дожидаясь ответа от перегруженных серверов
+            // Номер узла [Node-XXXX] теперь пишется МГНОВЕННО и без зависаний
             var display = document.getElementById('myNodeDisplay');
             if (display) display.innerText = 'YOUR ANONYMOUS NODE ID: [Node-' + myNodeID + ']';
             
-            listenToGlobalBroadcast();
+            listenToBroadcast();
         }
 
         function sendBroadcastMessage() {
@@ -185,24 +179,30 @@
 
             var rawText = textInput.value.trim();
 
-            globalRoom.set({
+            var messageData = {
                 node: myNodeID,
                 text: rawText,
                 timestamp: Date.now()
-            });
+            };
 
+            // Отправляем сообщение в сеть
+            channel.postMessage(messageData);
+
+            // Сразу выводим его у себя на экране
+            appendNodeMessage(myNodeID, rawText, 'my_' + messageData.timestamp);
             textInput.value = '';
         }
 
-        function listenToGlobalBroadcast() {
-            globalRoom.map().on(function(data) {
+        function listenToBroadcast() {
+            channel.onmessage = function(event) {
+                var data = event.data;
                 if (data && data.node && data.text && data.timestamp) {
                     var msgId = data.node + '_' + data.timestamp;
                     if (!document.getElementById(msgId)) {
                         appendNodeMessage(data.node, data.text, msgId);
                     }
                 }
-            });
+            };
         }
 
         function appendNodeMessage(senderNode, text, uniqueId) {
@@ -223,6 +223,7 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
+        // Запуск терминала
         window.addEventListener('DOMContentLoaded', function() {
             initializeNode();
             
