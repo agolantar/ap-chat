@@ -136,13 +136,11 @@
             INITIALIZING SECURE PROTOCOL...
         </div>
 
-        <!-- Окно сообщений глобальной комнаты -->
         <div class="chat-display-window" id="chatHistoryBox">
             <div style="color: var(--text-dim);">[SYSTEM]: Encrypted Multi-Client Pipeline Active.</div>
-            <div style="color: var(--text-dim);">[SYSTEM]: Global broadcast room initialized. All connected nodes are visible.</div>
+            <div style="color: var(--text-dim);">[SYSTEM]: Global broadcast room initialized. Redundant Web3 relays connected.</div>
         </div>
 
-        <!-- Строка ввода -->
         <div class="terminal-input-group">
             <label class="terminal-label">Payload Message Broadcast:</label>
             <input type="text" id="messageInput" class="terminal-field" placeholder="Type text packets...">
@@ -154,45 +152,39 @@
             MULTI-CLIENT P2P NETWORK // HIGH SPEED // NO SERVER LOGS
         </div>
     </div>
-    <!-- СКРИПТЫ ГЛОБАЛЬНОЙ СВЯЗИ ДЛЯ МНОЖЕСТВА КЛИЕНТОВ -->
+    <!-- ОБНОВЛЕННЫЕ НАДЕЖНЫЕ ИНТЕРНЕТ-СКРИПТЫ -->
     <script src="https://jsdelivr.net"></script>
     <script>
-        // Подключаем три стабильных интернет-узла для связи по всему миру
+        // Подключаем стабильный децентрализованный dApp-ретранслятор, защищенный от блокировок
         var gun = Gun([
-            'https://herokuapp.com',
-            'https://herokuapp.com',
-            'https://peer.ooo'
+            'https://dweb.link',
+            'https://herokuapp.com'
         ]);
         
-        // Создаем глобальную комнату, доступную для всех клиентов одновременно
-        var globalRoom = gun.get('ap_secure_multi_client_stream_prod_v1');
+        var globalRoom = gun.get('ap_secure_multi_client_stream_final_v3');
         var myNodeID = '';
 
-        // 1. ИНИЦИАЛИЗАЦИЯ ДЛЯ МНОЖЕСТВА КЛИЕНТОВ
         function initializeNode() {
-            var savedNode = localStorage.getItem('ap_multi_node_id');
-            
+            var savedNode = localStorage.getItem('ap_multi_node_id_v3');
             if (!savedNode) {
-                // Выделяем клиенту случайный анонимный номер узла от 1000 до 9999
                 savedNode = Math.floor(1000 + Math.random() * 9000).toString();
-                localStorage.setItem('ap_multi_node_id', savedNode);
+                localStorage.setItem('ap_multi_node_id_v3', savedNode);
             }
-            
             myNodeID = savedNode;
+            
+            // Мгновенно выводим статус, не дожидаясь ответа от перегруженных серверов
             var display = document.getElementById('myNodeDisplay');
             if (display) display.innerText = 'YOUR ANONYMOUS NODE ID: [Node-' + myNodeID + ']';
             
             listenToGlobalBroadcast();
         }
 
-        // 2. ОТПРАВКА СООБЩЕНИЯ В ОБЩИЙ ЭФИР ИНТЕРНЕТА
         function sendBroadcastMessage() {
             var textInput = document.getElementById('messageInput');
             if (!textInput || textInput.value.trim() === '') return;
 
             var rawText = textInput.value.trim();
 
-            // Публикуем сообщение, которое увидят ВСЕ клиенты
             globalRoom.set({
                 node: myNodeID,
                 text: rawText,
@@ -202,12 +194,10 @@
             textInput.value = '';
         }
 
-        // 3. ПРИЕМ СООБЩЕНИЙ ОТ ВСЕХ КЛИЕНТОВ В СЕТИ
         function listenToGlobalBroadcast() {
             globalRoom.map().on(function(data) {
                 if (data && data.node && data.text && data.timestamp) {
                     var msgId = data.node + '_' + data.timestamp;
-                    // Проверяем, чтобы сообщения не дублировались на экране
                     if (!document.getElementById(msgId)) {
                         appendNodeMessage(data.node, data.text, msgId);
                     }
@@ -215,7 +205,6 @@
             });
         }
 
-        // 4. ВЫВОД В ОКНО ТЕРМИНАЛА
         function appendNodeMessage(senderNode, text, uniqueId) {
             var chatBox = document.getElementById('chatHistoryBox');
             if (!chatBox) return;
@@ -231,17 +220,15 @@
             }
 
             chatBox.appendChild(msgDiv);
-            chatBox.scrollTop = chatBox.scrollHeight; // Автоматический скролл вниз
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // Запуск системы
         window.addEventListener('DOMContentLoaded', function() {
             initializeNode();
             
             var sendBtn = document.getElementById('sendBtn');
             if (sendBtn) sendBtn.onclick = sendBroadcastMessage;
 
-            // Отправка по кнопке Enter
             document.body.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter' && document.activeElement.id === 'messageInput') {
                     sendBroadcastMessage();
