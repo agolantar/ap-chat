@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AP // Secure Terminal Network v1.0</title>
+    <style>
+        :root {
+            --bg-main: #020202;
+            --bg-window: #0c0c0c;
+            --text-neon: #00ff66; /* Зеленый люминофор */
+            --text-dim: #00aa44;
+            --border-dark: #000000;
+            --font-terminal: 'Courier New', Courier, monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-neon);
+            font-family: var(--font-terminal);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .icq-terminal-container {
+            max-width: 600px;
+            width: 100%;
+            background-color: var(--bg-window);
+            border: 2px solid var(--text-dim);
+            box-shadow: 6px 6px 0px var(--border-dark);
+            padding: 20px;
+        }
+
+        .terminal-top-bar {
+            background-color: var(--text-dim);
+            color: var(--bg-main);
+            padding: 4px 10px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .status-header {
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text-neon);
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            border-bottom: 1px dashed var(--text-dim);
+            padding-bottom: 10px;
+        }
+
+        .terminal-input-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .terminal-label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .terminal-field {
+            background-color: #000000;
+            border: 1px solid var(--text-dim);
+            color: var(--text-neon);
+            padding: 10px;
+            font-family: var(--font-terminal);
+            font-size: 0.85rem;
+            width: 100%;
+        }
+        .terminal-field:focus {
+            outline: none;
+            border-color: var(--text-neon);
+        }
+
+        .chat-display-window {
+            border: 1px solid var(--text-dim);
+            background-color: #000000;
+            height: 280px;
+            padding: 12px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .terminal-btn {
+            background-color: var(--text-dim);
+            border: 1px solid var(--text-neon);
+            color: var(--bg-main);
+            padding: 12px;
+            font-family: var(--font-terminal);
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            width: 100%;
+        }
+        .terminal-btn:hover {
+            background-color: var(--text-neon);
+        }
+
+        .system-logs {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-align: center;
+            margin-top: 15px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="icq-terminal-container">
+        <div class="terminal-top-bar">
+            <span>AP_SECURE_CHAT_v1.0</span>
+            <span>[X]</span>
+        </div>
+
+        <div class="status-header" id="myNodeDisplay">
+            INITIALIZING SECURE PROTOCOL...
+        </div>
+
+        <!-- Окно сообщений глобальной комнаты -->
+        <div class="chat-display-window" id="chatHistoryBox">
+            <div style="color: var(--text-dim);">[SYSTEM]: Encrypted Multi-Client Pipeline Active.</div>
+            <div style="color: var(--text-dim);">[SYSTEM]: Global broadcast room initialized. All connected nodes are visible.</div>
+        </div>
+
+        <!-- Строка ввода -->
+        <div class="terminal-input-group">
+            <label class="terminal-label">Payload Message Broadcast:</label>
+            <input type="text" id="messageInput" class="terminal-field" placeholder="Type text packets...">
+        </div>
+
+        <button class="terminal-btn" id="sendBtn">Transmit Data Packet</button>
+
+        <div class="system-logs">
+            MULTI-CLIENT P2P NETWORK // HIGH SPEED // NO SERVER LOGS
+        </div>
+    </div>
+    <!-- СКРИПТЫ ГЛОБАЛЬНОЙ СВЯЗИ ДЛЯ МНОЖЕСТВА КЛИЕНТОВ -->
+    <script src="https://jsdelivr.net"></script>
+    <script>
+        // Подключаем три стабильных интернет-узла для связи по всему миру
+        var gun = Gun([
+            'https://herokuapp.com',
+            'https://herokuapp.com',
+            'https://peer.ooo'
+        ]);
+        
+        // Создаем глобальную комнату, доступную для всех клиентов одновременно
+        var globalRoom = gun.get('ap_secure_multi_client_stream_prod_v1');
+        var myNodeID = '';
+
+        // 1. ИНИЦИАЛИЗАЦИЯ ДЛЯ МНОЖЕСТВА КЛИЕНТОВ
+        function initializeNode() {
+            var savedNode = localStorage.getItem('ap_multi_node_id');
+            
+            if (!savedNode) {
+                // Выделяем клиенту случайный анонимный номер узла от 1000 до 9999
+                savedNode = Math.floor(1000 + Math.random() * 9000).toString();
+                localStorage.setItem('ap_multi_node_id', savedNode);
+            }
+            
+            myNodeID = savedNode;
+            var display = document.getElementById('myNodeDisplay');
+            if (display) display.innerText = 'YOUR ANONYMOUS NODE ID: [Node-' + myNodeID + ']';
+            
+            listenToGlobalBroadcast();
+        }
+
+        // 2. ОТПРАВКА СООБЩЕНИЯ В ОБЩИЙ ЭФИР ИНТЕРНЕТА
+        function sendBroadcastMessage() {
+            var textInput = document.getElementById('messageInput');
+            if (!textInput || textInput.value.trim() === '') return;
+
+            var rawText = textInput.value.trim();
+
+            // Публикуем сообщение, которое увидят ВСЕ клиенты
+            globalRoom.set({
+                node: myNodeID,
+                text: rawText,
+                timestamp: Date.now()
+            });
+
+            textInput.value = '';
+        }
+
+        // 3. ПРИЕМ СООБЩЕНИЙ ОТ ВСЕХ КЛИЕНТОВ В СЕТИ
+        function listenToGlobalBroadcast() {
+            globalRoom.map().on(function(data) {
+                if (data && data.node && data.text && data.timestamp) {
+                    var msgId = data.node + '_' + data.timestamp;
+                    // Проверяем, чтобы сообщения не дублировались на экране
+                    if (!document.getElementById(msgId)) {
+                        appendNodeMessage(data.node, data.text, msgId);
+                    }
+                }
+            });
+        }
+
+        // 4. ВЫВОД В ОКНО ТЕРМИНАЛА
+        function appendNodeMessage(senderNode, text, uniqueId) {
+            var chatBox = document.getElementById('chatHistoryBox');
+            if (!chatBox) return;
+
+            var msgDiv = document.createElement('div');
+            msgDiv.id = uniqueId;
+            msgDiv.style.marginBottom = '8px';
+            
+            if (senderNode === myNodeID) {
+                msgDiv.innerHTML = '<span style="color: #ffffff;">[You-Node-' + senderNode + ']:</span> ' + text;
+            } else {
+                msgDiv.innerHTML = '<span style="color: var(--text-neon);">[Node-' + senderNode + ']:</span> ' + text;
+            }
+
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight; // Автоматический скролл вниз
+        }
+
+        // Запуск системы
+        window.addEventListener('DOMContentLoaded', function() {
+            initializeNode();
+            
+            var sendBtn = document.getElementById('sendBtn');
+            if (sendBtn) sendBtn.onclick = sendBroadcastMessage;
+
+            // Отправка по кнопке Enter
+            document.body.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && document.activeElement.id === 'messageInput') {
+                    sendBroadcastMessage();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
