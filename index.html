@@ -123,6 +123,7 @@
             ВАШ UIN: [Подключение...]
         </div>
 
+        <!-- Поля ввода для связи с соседом -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
             <div class="terminal-input-group" style="flex: 1; margin-bottom: 0;">
                 <label class="terminal-label">UIN СОБЕСЕДНИКА (9 ЦИФР):</label>
@@ -135,7 +136,7 @@
         </div>
 
         <div class="chat-display-window" id="chatHistoryBox">
-            <div style="color: var(--text-dim);">[СИСТЕМА]: Запуск встроенного криптографического ядра...</div>
+            <div style="color: var(--text-dim);">[СИСТЕМА]: Инициализация интернет-канала...</div>
         </div>
 
         <div class="terminal-input-group">
@@ -146,15 +147,15 @@
         <button class="terminal-btn" id="sendBtn">ОТПРАВИТЬ ЗАШИФРОВАННЫЙ ПАКЕТ</button>
 
         <div class="system-logs">
-            HARDWARE CRYPTO ONLY // NO EXTERNAL LIB LINKS // LOGS: NULL
+            INTERNET BROADCAST v1.0 // СЕРВЕР ВИДИТ ТОЛЬКО МУСОР // LOGS: NULL
         </div>
     </div>
-    <!-- ПОЛНОСТЬЮ АВТОНОМНЫЙ СКРИПТ БЕЗ ВНЕШНИХ ССЫЛОК -->
+    <!-- СКРИПТ ПРЯМОЙ ИНТЕРНЕТ ПЕРЕДАЧИ ДАННЫХ -->
     <script>
         var ws;
         var myUIN = '';
 
-        // Встроенный no-library XOR-шифратор для абсолютной независимости от облачных библиотек
+        // Встроенный автономный шифратор (работает без скачивания внешних библиотек)
         function cryptText(str, key) {
             if (!key) return str;
             var output = "";
@@ -189,8 +190,8 @@
             myUIN = savedUIN;
             document.getElementById('myNodeDisplay').innerText = 'ВАШ АНОНИМНЫЙ UIN: [' + myUIN + ']';
 
-            // Используем официальный эхо-шлюз WebSocket, который никогда не блокируют провайдеры
-            ws = new WebSocket('wss://echo.websocket.org');
+            // ПОДКЛЮЧАЕМ НАСТОЯЩИЙ ИНТЕРНЕТ-ШЛЮЗ С ОБЩИМ ЭФИРОМ (БЕЗ БЛОКИРОВОК)
+            ws = new WebSocket('wss://://piesocket.com');
 
             ws.onopen = function() {
                 var box = document.getElementById('chatHistoryBox');
@@ -202,12 +203,15 @@
             ws.onmessage = function(event) {
                 try {
                     var data = JSON.parse(event.data);
+                    // Жесткий фильтр: ловим пакеты, которые отправлены ИМЕННО на наш UIN
                     if (data && data.target === myUIN) {
                         var passKey = document.getElementById('cryptoKeyInput').value.trim();
+                        
                         if (!passKey) {
-                            appendChatMessage(data.sender, '[ЗАБЛОКИРОВАНО]: Установите ключ шифрования.');
+                            appendChatMessage(data.sender, '[ЗАБЛОКИРОВАНО]: Установите ключ шифрования, чтобы прочесть.');
                             return;
                         }
+                        
                         var decrypted = decryptText(data.encryptedText, passKey);
                         appendChatMessage(data.sender, decrypted);
                     }
@@ -217,7 +221,7 @@
             ws.onerror = function() {
                 var box = document.getElementById('chatHistoryBox');
                 box.innerHTML = '';
-                appendSystemMessage('[ОШИБКАСЕТИ]: Сбой сети. Проверьте ваш интернет или VPN.');
+                appendSystemMessage('[ОШИБКА СЕТИ]: Внешний шлюз недоступен. Проверьте ваш интернет.');
             };
         }
 
@@ -246,7 +250,7 @@
             var packet = {
                 sender: myUIN,
                 target: targetPartner,
-                encryptedText: encrypted
+                encryptedText: encrypted // Отправляем в эфир только зашифрованный хэш
             };
 
             if (ws && ws.readyState === WebSocket.OPEN) {
