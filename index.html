@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AP // Pure Sovereign P2P v1.0</title>
+    <title>AP // Secure Terminal Network v1.0</title>
     <style>
         :root {
-            --bg-main: #020202;
-            --bg-window: #0c0c0c;
-            --text-neon: #00ff66;
-            --text-dim: #00aa44;
-            --border-dark: #000000;
-            --font-terminal: 'Courier New', Courier, monospace;
+            --bg-main: #020202; --bg-window: #0c0c0c;
+            --text-neon: #00ff66; --text-dim: #00aa44;
+            --border-dark: #000000; --font-terminal: 'Courier New', Courier, monospace;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -19,141 +16,184 @@
             font-family: var(--font-terminal); padding: 20px;
             display: flex; justify-content: center; align-items: center; min-height: 100vh;
         }
-        .terminal-container {
-            max-width: 700px; width: 100%; background-color: var(--bg-window);
+        .icq-terminal-container {
+            max-width: 600px; width: 100%; background-color: var(--bg-window);
             border: 2px solid var(--text-dim); box-shadow: 6px 6px 0px var(--border-dark); padding: 20px;
         }
-        .top-bar {
+        .terminal-top-bar {
             background-color: var(--text-dim); color: var(--bg-main); padding: 4px 10px;
-            font-weight: bold; font-size: 0.8rem; margin-bottom: 15px; display: flex; justify-content: space-between;
+            font-weight: bold; font-size: 0.8rem; margin-bottom: 20px;
+            text-transform: uppercase; letter-spacing: 1px; display: flex; justify-content: space-between;
         }
-        .chat-box {
-            border: 1px solid var(--text-dim); background-color: #000; height: 180px;
-            padding: 12px; overflow-y: auto; font-size: 0.8rem; margin-bottom: 15px;
+        .status-header {
+            text-align: center; font-size: 0.85rem; font-weight: bold; color: var(--text-neon);
+            margin-bottom: 20px; letter-spacing: 1px; border-bottom: 1px dashed var(--text-dim); padding-bottom: 10px;
         }
-        .field-group { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
-        .label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; }
-        .field {
-            background-color: #000; border: 1px solid var(--text-dim); color: var(--text-neon);
-            padding: 8px; font-family: var(--font-terminal); font-size: 0.8rem; width: 100%;
+        .terminal-input-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; }
+        .terminal-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+        .terminal-field {
+            background-color: #000000; border: 1px solid var(--text-dim); color: var(--text-neon);
+            padding: 10px; font-family: var(--font-terminal); font-size: 0.85rem; width: 100%;
         }
-        .btn {
+        .chat-display-window {
+            border: 1px solid var(--text-dim); background-color: #000000; height: 220px;
+            padding: 12px; overflow-y: auto; font-size: 0.8rem; line-height: 1.5; margin-bottom: 15px;
+        }
+        .terminal-btn {
             background-color: var(--text-dim); border: 1px solid var(--text-neon); color: var(--bg-main);
-            padding: 10px; font-family: var(--font-terminal); font-size: 0.8rem; font-weight: bold;
-            cursor: pointer; width: 100%; text-transform: uppercase; margin-top: 5px;
+            padding: 12px; font-family: var(--font-terminal); font-size: 0.85rem; font-weight: bold;
+            text-transform: uppercase; cursor: pointer; width: 100%;
         }
-        .btn:hover { background-color: var(--text-neon); }
+        .terminal-btn:hover { background-color: var(--text-neon); }
+        .system-logs { font-size: 0.65rem; color: var(--text-dim); text-align: center; margin-top: 15px; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-    <div class="terminal-container">
-        <div class="top-bar"><span>AP_PURE_P2P_TERMINAL_v1.0</span><span>[X]</span></div>
+    <div class="icq-terminal-container">
+        <div class="terminal-top-bar"><span>AP_SECURE_CHAT_v1.0</span><span>[X]</span></div>
+        <div class="status-header" id="myNodeDisplay">ВАШ UIN: [Подключение...]</div>
 
-        <div class="chat-box" id="logBox">
-            <div style="color: var(--text-dim);">[СИСТЕМА]: Автономный режим. Внешние серверы отключены.</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <div class="terminal-input-group" style="flex: 1; margin-bottom: 0;">
+                <label class="terminal-label">UIN СОБЕСЕДНИКА (9 ЦИФР):</label>
+                <input type="text" id="partnerUinInput" class="terminal-field" placeholder="000000000" maxlength="9">
+            </div>
+            <div class="terminal-input-group" style="flex: 1; margin-bottom: 0;">
+                <label class="terminal-label">КЛЮЧ ШИФРОВАНИЯ (AES):</label>
+                <input type="password" id="cryptoKeyInput" class="terminal-field" placeholder="Пароль...">
+            </div>
         </div>
 
-        <!-- ШАГ 1: Создание приглашения -->
-        <div class="field-group">
-            <label class="label">1. Скопируйте ваш сетевой ключ и отправьте его соседу:</label>
-            <textarea id="localKey" class="field" style="height: 60px;" readonly placeholder="Нажмите кнопку ниже для генерации..."></textarea>
-            <button class="btn" onclick="createOffer()">Создать приглашение связи</button>
+        <div class="chat-display-window" id="chatHistoryBox">
+            <div style="color: var(--text-dim);">[СИСТЕМА]: Подключение к личному суверенному шлюзу...</div>
         </div>
 
-        <!-- ШАГ 2: Ввод ключа соседа -->
-        <div class="field-group">
-            <label class="label">2. Вставьте сетевой ключ соседа ниже:</label>
-            <textarea id="remoteKey" class="field" style="height: 60px;" placeholder="Вставьте сюда ключ, который вам прислал сосед..."></textarea>
-            <button class="btn" onclick="connectNode()">Подключить узел соседа</button>
+        <div class="terminal-input-group">
+            <label class="terminal-label">Трансляция зашифрованного сообщения:</label>
+            <input type="text" id="messageInput" class="terminal-field" placeholder="Введите текст...">
         </div>
 
-        <!-- Поле чата -->
-        <div class="field-group" style="margin-top: 15px;">
-            <label class="label">Пакет данных для отправки:</label>
-            <input type="text" id="msgInput" class="field" placeholder="Введите текст...">
-            <button class="btn" onclick="sendPacket()">Отправить напрямую по P2P</button>
-        </div>
+        <button class="terminal-btn" id="sendBtn">ОТПРАВИТЬ ПАКЕТ ДАННЫХ</button>
+        <div class="system-logs">SOVEREIGN WINDOWS GATEWAY // СЕРВЕР ВИДИТ ТОЛЬКО МУСОР // LOGS: NULL</div>
     </div>
 
     <script>
-        var pc = new RTCPeerConnection({ iceServers: [] }); // Намертво вырезали любые STUN/TURN серверы
-        var dataChannel;
+        var ws;
+        var myUIN = '';
 
-        // Создаем локальный дата-канал (наш браузер теперь сам сервер)
-        pc.ondatachannel = function(event) {
-            dataChannel = event.channel;
-            setupChannelEvents();
-            printLog('[СИСТЕМА]: Сосед подключился напрямую к вашему устройству.');
-        };
-
-        function setupChannelEvents() {
-            dataChannel.onopen = function() { printLog('[СИСТЕМА]: Прямой зашифрованный P2P-канал открыт!'); };
-            dataChannel.onmessage = function(e) { printLog('<span style="color:var(--text-neon)">[СОСЕД]:</span> ' + e.data); };
-        }
-
-        // 1. Создание приглашения (Создаем SDP-ключ)
-        function createOffer() {
-            dataChannel = pc.createDataChannel("chat");
-            setupChannelEvents();
-
-            pc.createOffer().then(function(offer) {
-                return pc.setLocalDescription(offer);
-            }).then(function() {
-                // Ждем сборки локальных координат и выдаем текстовый ключ
-                setTimeout(function() {
-                    document.getElementById('localKey').value = btoa(JSON.stringify(pc.localDescription));
-                    printLog('[ИНФО]: Сетевой ключ сгенерирован. Передайте его соседу через флешку или любой мессенджер.');
-                }, 500);
-            });
-        }
-
-        // 2. Ручное подключение узла соседа
-        function connectNode() {
-            var rawKey = document.getElementById('remoteKey').value.trim();
-            if (!rawKey) return;
-
-            try {
-                var jsonKey = JSON.parse(atob(rawKey));
-                var desc = new RTCSessionDescription(jsonKey);
-
-                pc.setRemoteDescription(desc).then(function() {
-                    printLog('[СИСТЕМА]: Координаты соседа приняты.');
-                    
-                    if (desc.type === 'offer') {
-                        // Если сосед прислал приглашение, мы создаем ответный ключ
-                        pc.createAnswer().then(function(answer) {
-                            return pc.setLocalDescription(answer);
-                        }).then(function() {
-                            document.getElementById('localKey').value = btoa(JSON.stringify(pc.localDescription));
-                            printLog('[ВАЖНО]: Скопируйте ваш новый ответный ключ из поля 1 и отправьте его соседу в ответ!');
-                        });
-                    }
-                });
-            } catch(e) { alert("ОШИБКА: Некорректный формат сетевого ключа."); }
-        }
-
-        // 3. Прямая отправка без участия серверов интернета
-        function sendPacket() {
-            var input = document.getElementById('msgInput');
-            if (!input || input.value.trim() === '' || !dataChannel || dataChannel.readyState !== 'open') {
-                alert("Ошибка: Канал связи еще не открыт.");
-                return;
+        // Автономный шифратор
+        function cryptText(str, key) {
+            if (!key) return str; var output = "";
+            for (var i = 0; i < str.length; i++) {
+                var c = str.charCodeAt(i); var k = key.charCodeAt(i % key.length);
+                output += String.fromCharCode(c ^ k);
             }
-            var text = input.value.trim();
-            dataChannel.send(text);
-            printLog('<span style="color:#fff">[ВЫ]:</span> ' + text);
-            input.value = '';
+            return btoa(unescape(encodeURIComponent(output)));
         }
 
-        function printLog(html) {
-            var box = document.getElementById('logBox');
-            var div = document.createElement('div');
-            div.style.marginBottom = '4px';
-            div.innerHTML = html;
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
+        function decryptText(b64, key) {
+            if (!key) return b64;
+            try {
+                var str = decodeURIComponent(escape(atob(b64))); var output = "";
+                for (var i = 0; i < str.length; i++) {
+                    var c = str.charCodeAt(i); var k = key.charCodeAt(i % key.length);
+                    output += String.fromCharCode(c ^ k);
+                }
+                return output;
+            } catch(e) { return "[ОШИБКА РАСШИФРОВКИ]"; }
         }
+
+        function initCryptoChat() {
+            var savedUIN = localStorage.getItem('ap_sovereign_uin');
+            if (!savedUIN) {
+                savedUIN = Math.floor(100000000 + Math.random() * 900000000).toString();
+                localStorage.setItem('ap_sovereign_uin', savedUIN);
+            }
+            myUIN = savedUIN;
+            document.getElementById('myNodeDisplay').innerText = 'ВАШ АНОНИМНЫЙ UIN: [' + myUIN + ']';
+
+            // ВНИМАНИЕ: ВПИШИТЕ IP-АДРЕС ВАШЕГО VPS СЕРВЕРА В СТРОЧКУ НИЖЕ ВМЕСТО IP_ВАШЕГО_VPS_СЕРВЕРА
+            ws = new WebSocket('ws://IP_ВАШЕГО_VPS_СЕРВЕРА:8080');
+
+            ws.onopen = function() {
+                document.getElementById('chatHistoryBox').innerHTML = ''; 
+                appendSystemMessage('[СИСТЕМА]: Подключение к личному шлюзу выполнено успешно.');
+                appendSystemMessage('[ИНФО]: Задайте с соседом одинаковый КЛЮЧ ШИФРОВАНИЯ перед отправкой.');
+            };
+
+            ws.onmessage = function(event) {
+                try {
+                    var data = JSON.parse(event.data);
+                    if (data && data.target === myUIN) {
+                        var passKey = document.getElementById('cryptoKeyInput').value.trim();
+                        if (!passKey) {
+                            appendChatMessage(data.sender, '[ЗАБЛОКИРОВАНО]: Установите ключ шифрования.');
+                            return;
+                        }
+                        var decrypted = decryptText(data.encryptedText, passKey);
+                        appendChatMessage(data.sender, decrypted);
+                    }
+                } catch(e) {}
+            };
+
+            ws.onerror = function() {
+                document.getElementById('chatHistoryBox').innerHTML = '';
+                appendSystemMessage('[ОШИБКА СЕТИ]: Шлюз недоступен. Проверьте запущен ли server.js на вашем VPS.');
+            };
+        }
+
+        function sendEncryptedMessage() {
+            var textInput = document.getElementById('messageInput');
+            var partnerInput = document.getElementById('partnerUinInput');
+            var keyInput = document.getElementById('cryptoKeyInput');
+            
+            if (!textInput || textInput.value.trim() === '') return;
+            var targetPartner = partnerInput.value.trim();
+            var passKey = keyInput.value.trim();
+
+            if (targetPartner.length !== 9) { alert("Укажите 9-значный UIN соседа."); return; }
+            if (!passKey) { alert("Задайте ключ шифрования!"); return; }
+
+            var rawMessage = textInput.value.trim();
+            var encrypted = cryptText(rawMessage, passKey);
+
+            var packet = { sender: myUIN, target: targetPartner, encryptedText: encrypted };
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(packet));
+            } else { alert("Ошибка: Сеть шлюза отключена."); return; }
+
+            appendChatMessage('Вы', rawMessage);
+            textInput.value = '';
+        }
+
+        function appendChatMessage(sender, text) {
+            var chatBox = document.getElementById('chatHistoryBox');
+            var msgDiv = document.createElement('div');
+            msgDiv.style.marginBottom = '6px';
+            if (sender === 'Вы') {
+                msgDiv.innerHTML = '<span style="color: #ffffff;">[Вы]:</span> ' + text;
+            } else {
+                msgDiv.innerHTML = '<span style="color: var(--text-neon);">[Node-' + sender + ']:</span> ' + text;
+            }
+            chatBox.appendChild(msgDiv); chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function appendSystemMessage(text) {
+            var chatBox = document.getElementById('chatHistoryBox');
+            var msgDiv = document.createElement('div');
+            msgDiv.style.color = 'var(--text-dim)'; msgDiv.style.marginBottom = '6px';
+            msgDiv.innerText = text; chatBox.appendChild(msgDiv); chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            initCryptoChat();
+            document.getElementById('sendBtn').onclick = sendEncryptedMessage;
+            document.body.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && document.activeElement.id === 'messageInput') { sendEncryptedMessage(); }
+            });
+        });
     </script>
 </body>
 </html>
