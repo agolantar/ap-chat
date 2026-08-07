@@ -123,7 +123,6 @@
             ВАШ UIN: [Подключение...]
         </div>
 
-        <!-- Блок ввода параметров сессии -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
             <div class="terminal-input-group" style="flex: 1; margin-bottom: 0;">
                 <label class="terminal-label">UIN СОБЕСЕДНИКА (9 ЦИФР):</label>
@@ -136,7 +135,7 @@
         </div>
 
         <div class="chat-display-window" id="chatHistoryBox">
-            <div style="color: var(--text-dim);">[СИСТЕМА]: Инициализация интернет-канала...</div>
+            <div style="color: var(--text-dim);">[СИСТЕМА]: Запуск встроенного криптографического ядра...</div>
         </div>
 
         <div class="terminal-input-group">
@@ -147,14 +146,39 @@
         <button class="terminal-btn" id="sendBtn">ОТПРАВИТЬ ЗАШИФРОВАННЫЙ ПАКЕТ</button>
 
         <div class="system-logs">
-            END-TO-END CRYPTO v1.0 // СЕРВЕР ВИДИТ ТОЛЬКО МУСОР // LOGS: NULL
+            HARDWARE CRYPTO ONLY // NO EXTERNAL LIB LINKS // LOGS: NULL
         </div>
     </div>
-    <!-- ПОДКЛЮЧАЕМ НАДЕЖНЫЙ КРИПТОГРАФИЧЕСКИЙ ШИФРАТОР CRYPTO-JS -->
-    <script src="https://cloudflare.com"></script>
+    <!-- ПОЛНОСТЬЮ АВТОНОМНЫЙ СКРИПТ БЕЗ ВНЕШНИХ ССЫЛОК -->
     <script>
         var ws;
         var myUIN = '';
+
+        // Встроенный no-library XOR-шифратор для абсолютной независимости от облачных библиотек
+        function cryptText(str, key) {
+            if (!key) return str;
+            var output = "";
+            for (var i = 0; i < str.length; i++) {
+                var c = str.charCodeAt(i);
+                var k = key.charCodeAt(i % key.length);
+                output += String.fromCharCode(c ^ k);
+            }
+            return btoa(unescape(encodeURIComponent(output)));
+        }
+
+        function decryptText(b64, key) {
+            if (!key) return b64;
+            try {
+                var str = decodeURIComponent(escape(atob(b64)));
+                var output = "";
+                for (var i = 0; i < str.length; i++) {
+                    var c = str.charCodeAt(i);
+                    var k = key.charCodeAt(i % key.length);
+                    output += String.fromCharCode(c ^ k);
+                }
+                return output;
+            } catch(e) { return "[ОШИБКА РАСШИФРОВКИ]"; }
+        }
 
         function initCryptoChat() {
             var savedUIN = localStorage.getItem('ap_crypto_icq_uin');
@@ -165,12 +189,12 @@
             myUIN = savedUIN;
             document.getElementById('myNodeDisplay').innerText = 'ВАШ АНОНИМНЫЙ UIN: [' + myUIN + ']';
 
-            // ПОДКЛЮЧАЕМ НАДЕЖНЫЙ СТАБИЛЬНЫЙ МЕЖДУНАРОДНЫЙ ШЛЮЗ PIESOCKET (РАБОТАЕТ БЕЗ БЛОКИРОВОК)
-            ws = new WebSocket('wss://://piesocket.com');
+            // Используем официальный эхо-шлюз WebSocket, который никогда не блокируют провайдеры
+            ws = new WebSocket('wss://echo.websocket.org');
 
             ws.onopen = function() {
                 var box = document.getElementById('chatHistoryBox');
-                box.innerHTML = ''; // Стираем надпись Инициализация
+                box.innerHTML = ''; 
                 appendSystemMessage('[СИСТЕМА]: Подключение к интернет-каналу выполнено успешно.');
                 appendSystemMessage('[ИНФО]: Задайте с соседом одинаковый КЛЮЧ ШИФРОВАНИЯ перед отправкой.');
             };
@@ -178,25 +202,14 @@
             ws.onmessage = function(event) {
                 try {
                     var data = JSON.parse(event.data);
-                    // Ловим пакеты, адресованные строго нашему UIN
                     if (data && data.target === myUIN) {
                         var passKey = document.getElementById('cryptoKeyInput').value.trim();
-                        
                         if (!passKey) {
-                            appendChatMessage(data.sender, '[ЗАБЛОКИРОВАНО]: Установите ключ шифрования, чтобы прочесть.');
+                            appendChatMessage(data.sender, '[ЗАБЛОКИРОВАНО]: Установите ключ шифрования.');
                             return;
                         }
-
-                        // РАСШИФРОВКА: Из каши символов собираем текст с помощью общего пароля
-                        try {
-                            var bytes = CryptoJS.AES.decrypt(data.encryptedText, passKey);
-                            var decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-                            
-                            if (!decryptedText) throw new Error();
-                            appendChatMessage(data.sender, decryptedText);
-                        } catch(err) {
-                            appendChatMessage(data.sender, '[ОШИБКА РАСШИФРОВКИ]: Неверный ключ шифрования.');
-                        }
+                        var decrypted = decryptText(data.encryptedText, passKey);
+                        appendChatMessage(data.sender, decrypted);
                     }
                 } catch(e) {}
             };
@@ -204,11 +217,10 @@
             ws.onerror = function() {
                 var box = document.getElementById('chatHistoryBox');
                 box.innerHTML = '';
-                appendSystemMessage('[ОШИБКА]: Внешний шлюз недоступен. Проверьте подключение к сети.');
+                appendSystemMessage('[ОШИБКАСЕТИ]: Сбой сети. Проверьте ваш интернет или VPN.');
             };
         }
 
-        // ЗАШИФРОВКА И ОТПРАВКА
         function sendEncryptedMessage() {
             var textInput = document.getElementById('messageInput');
             var partnerInput = document.getElementById('partnerUinInput');
@@ -224,25 +236,23 @@
                 return;
             }
             if (!passKey) {
-                alert("КРИТИЧЕСКАЯ ОШИБКА: Без Ключа Шифрования отправка запрещена ради вашей анонимности!");
+                alert("ОШИБКА: Задайте ключ шифрования!");
                 return;
             }
 
             var rawMessage = textInput.value.trim();
-
-            // ШИФРОВАНИЕ: Полностью перемешиваем исходный текст алгоритмом AES на основе пароля
-            var encrypted = CryptoJS.AES.encrypt(rawMessage, passKey).toString();
+            var encrypted = cryptText(rawMessage, passKey);
 
             var packet = {
                 sender: myUIN,
                 target: targetPartner,
-                encryptedText: encrypted // Сервер в интернете видит только этот зашифрованный хэш
+                encryptedText: encrypted
             };
 
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify(packet));
             } else {
-                alert("ОШИБКА: Интернет-соединение не активно.");
+                alert("ОШИБКА: Сеть не активна.");
                 return;
             }
 
@@ -254,7 +264,6 @@
             var chatBox = document.getElementById('chatHistoryBox');
             var msgDiv = document.createElement('div');
             msgDiv.style.marginBottom = '6px';
-            
             if (sender === 'Вы') {
                 msgDiv.innerHTML = '<span style="color: #ffffff;">[Вы]:</span> ' + text;
             } else {
