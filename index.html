@@ -114,7 +114,7 @@
             document.getElementById('myNodeDisplay').innerText = 'ВАШ АНОНИМНЫЙ UIN: [' + myUIN + ']';
 
             // ВНИМАНИЕ: ВПИШИТЕ IP-АДРЕС ВАШЕГО VPS СЕРВЕРА В СТРОЧКУ НИЖЕ ВМЕСТО IP_ВАШЕГО_VPS_СЕРВЕРА
-           ws = new WebSocket('ws://83.171.226.126:8080');
+           ws = new WebSocket('wss://gate.agolantar.github.io:8080');
 
             ws.onopen = function() {
                 document.getElementById('chatHistoryBox').innerHTML = ''; 
