@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AP // Secure Terminal Network v1.0</title>
+    <title>AP // Sovereign Mesh Node v1.0</title>
     <style>
         :root {
             --bg-main: #020202;
@@ -115,153 +115,164 @@
 
     <div class="icq-terminal-container">
         <div class="terminal-top-bar">
-            <span>AP_SECURE_CHAT_v1.0</span>
+            <span>AP_MESH_NODE_v1.0</span>
             <span>[X]</span>
         </div>
 
         <div class="status-header" id="myNodeDisplay">
-            ВАШ UIN: [Подключение...]
+            ВАШ UIN СЕРВЕРА: [Инициализация...]
         </div>
 
-        <!-- Поля ввода для связи с соседом -->
+        <!-- Поля для децентрализованного обмена ключами соседа -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
             <div class="terminal-input-group" style="flex: 1; margin-bottom: 0;">
-                <label class="terminal-label">UIN СОБЕСЕДНИКА (9 ЦИФР):</label>
+                <label class="terminal-label">UIN СОСЕДА ДЛЯ СВЯЗИ:</label>
                 <input type="text" id="partnerUinInput" class="terminal-field" placeholder="000000000" maxlength="9">
             </div>
             <div class="terminal-input-group" style="flex: 1; margin-bottom: 0;">
                 <label class="terminal-label">КЛЮЧ ШИФРОВАНИЯ (AES):</label>
-                <input type="password" id="cryptoKeyInput" class="terminal-field" placeholder="Пароль с соседом...">
+                <input type="password" id="cryptoKeyInput" class="terminal-field" placeholder="Общий пароль...">
             </div>
         </div>
 
         <div class="chat-display-window" id="chatHistoryBox">
-            <div style="color: var(--text-dim);">[СИСТЕМА]: Инициализация интернет-канала...</div>
+            <div style="color: var(--text-dim);">[СИСТЕМА]: Генерация криптографических ключей узла...</div>
         </div>
 
         <div class="terminal-input-group">
-            <label class="terminal-label">Трансляция зашифрованного сообщения:</label>
-            <input type="text" id="messageInput" class="terminal-field" placeholder="Введите текст...">
+            <label class="terminal-label">Трансляция сообщения напрямую в узел соседа:</label>
+            <input type="text" id="messageInput" class="terminal-field" placeholder="Введите текст сообщения...">
         </div>
 
-        <button class="terminal-btn" id="sendBtn">ОТПРАВИТЬ ЗАШИФРОВАННЫЙ ПАКЕТ</button>
+        <button class="terminal-btn" id="sendBtn">ОТПРАВИТЬ НАПРЯМУЮ (P2P)</button>
 
         <div class="system-logs">
-            INTERNET BROADCAST v1.0 // СЕРВЕР ВИДИТ ТОЛЬКО МУСОР // LOGS: NULL
+            100% P2P MESH // КАЖДЫЙ БРАУЗЕР СЕРВЕР // LOGS: ABSENT
         </div>
     </div>
-    <!-- СКРИПТ ПРЯМОЙ ИНТЕРНЕТ ПЕРЕДАЧИ ДАННЫХ -->
+    <!-- ВСТРОЕННЫЙ КРИПТОШИФРАТОР И БЕЗСЕРВЕРНЫЙ СВЯЗНОЙ МОДУЛЬ -->
+    <script src="https://cloudflare.com"></script>
+    <script src="https://unpkg.com"></script>
     <script>
-        var ws;
+        var peer, conn;
         var myUIN = '';
 
-        // Встроенный автономный шифратор (работает без скачивания внешних библиотек)
-        function cryptText(str, key) {
-            if (!key) return str;
-            var output = "";
-            for (var i = 0; i < str.length; i++) {
-                var c = str.charCodeAt(i);
-                var k = key.charCodeAt(i % key.length);
-                output += String.fromCharCode(c ^ k);
-            }
-            return btoa(unescape(encodeURIComponent(output)));
-        }
-
-        function decryptText(b64, key) {
-            if (!key) return b64;
-            try {
-                var str = decodeURIComponent(escape(atob(b64)));
-                var output = "";
-                for (var i = 0; i < str.length; i++) {
-                    var c = str.charCodeAt(i);
-                    var k = key.charCodeAt(i % key.length);
-                    output += String.fromCharCode(c ^ k);
-                }
-                return output;
-            } catch(e) { return "[ОШИБКА РАСШИФРОВКИ]"; }
-        }
-
-        function initCryptoChat() {
-            var savedUIN = localStorage.getItem('ap_crypto_icq_uin');
+        function initMeshServer() {
+            // Генерируем уникальный 9-значный номер сервера для этого устройства
+            var savedUIN = localStorage.getItem('ap_mesh_uin_v1');
             if (!savedUIN) {
                 savedUIN = Math.floor(100000000 + Math.random() * 900000000).toString();
-                localStorage.setItem('ap_crypto_icq_uin', savedUIN);
+                localStorage.setItem('ap_mesh_uin_v1', savedUIN);
             }
             myUIN = savedUIN;
-            document.getElementById('myNodeDisplay').innerText = 'ВАШ АНОНИМНЫЙ UIN: [' + myUIN + ']';
+            document.getElementById('myNodeDisplay').innerText = 'ВАШ UIN СЕРВЕРА: [' + myUIN + ']';
 
-            // ПОДКЛЮЧАЕМ НАСТОЯЩИЙ ИНТЕРНЕТ-ШЛЮЗ С ОБЩИМ ЭФИРОМ (БЕЗ БЛОКИРОВОК)
-            ws = new WebSocket('wss://://piesocket.com');
+            // Инициализируем локальный сервер внутри браузера.
+            // Для обхода NAT роутеров код использует встроенные в любой браузер бесплатные STUN-серверы Google.
+            // Они не видят сообщения, а работают как зеркало, помогая телефонам узнать свой внешний IP-адрес.
+            peer = new Peer('ap-node-' + myUIN, {
+                config: { 'iceServers': [{ 'urls': 'stun:://google.com' }] },
+                debug: 1
+            });
 
-            ws.onopen = function() {
-                var box = document.getElementById('chatHistoryBox');
-                box.innerHTML = ''; 
-                appendSystemMessage('[СИСТЕМА]: Подключение к интернет-каналу выполнено успешно.');
-                appendSystemMessage('[ИНФО]: Задайте с соседом одинаковый КЛЮЧ ШИФРОВАНИЯ перед отправкой.');
-            };
+            // Слушаем входящие запросы. Наш браузер сам выступает в роли принимающего сервера!
+            peer.on('connection', function(incomingConn) {
+                conn = incomingConn;
+                bindMeshEvents();
+                appendSystemMessage('[СИСТЕМА]: Внешний узел соседа успешно подключился к вашему серверу.');
+            });
 
-            ws.onmessage = function(event) {
-                try {
-                    var data = JSON.parse(event.data);
-                    // Жесткий фильтр: ловим пакеты, которые отправлены ИМЕННО на наш UIN
-                    if (data && data.target === myUIN) {
-                        var passKey = document.getElementById('cryptoKeyInput').value.trim();
-                        
-                        if (!passKey) {
-                            appendChatMessage(data.sender, '[ЗАБЛОКИРОВАНО]: Установите ключ шифрования, чтобы прочесть.');
-                            return;
-                        }
-                        
-                        var decrypted = decryptText(data.encryptedText, passKey);
-                        appendChatMessage(data.sender, decrypted);
-                    }
-                } catch(e) {}
-            };
-
-            ws.onerror = function() {
+            peer.on('open', function() {
                 var box = document.getElementById('chatHistoryBox');
                 box.innerHTML = '';
-                appendSystemMessage('[ОШИБКА СЕТИ]: Внешний шлюз недоступен. Проверьте ваш интернет.');
-            };
+                appendSystemMessage('[СИСТЕМА]: Ваш локальный P2P-сервер успешно запущен в сеть интернет.');
+                appendSystemMessage('[ИНФО]: Введите UIN соседа и общий пароль для установления моста.');
+            });
+
+            peer.on('error', function(err) {
+                if (err.type === 'peer-not-found') {
+                    appendSystemMessage('[ОШИБКА]: Узел соседа не найден в сети. Убедитесь, что его сайт открыт.');
+                } else {
+                    appendSystemMessage('[ОШИБКА СЕТИ]: Защита роутера заблокировала прямое соединение.');
+                }
+            });
         }
 
-        function sendEncryptedMessage() {
+        // ПОДКЛЮЧЕНИЕ К СЕРВЕРУ СОСЕДА ПО ЕГО UIN
+        function connectToNeighbour() {
+            var partnerInput = document.getElementById('partnerUinInput').value.trim();
+            if (partnerInput.length !== 9) return false;
+
+            if (!conn || conn.peer !== 'ap-node-' + partnerInput) {
+                appendSystemMessage('[СИСТЕМА]: Подключение к серверу соседа [' + partnerInput + ']...');
+                conn = peer.connect('ap-node-' + partnerInput, { reliable: true });
+                bindMeshEvents();
+            }
+            return true;
+        }
+
+        function bindMeshEvents() {
+            conn.on('open', function() {
+                appendSystemMessage('[СИСТЕМА]: Сквозной прямой P2P-канал связи установлен.');
+            });
+
+            // Прием пакетов данных напрямую в память браузера (в обход сайтов и серверов)
+            conn.on('data', function(data) {
+                if (data && data.encryptedText) {
+                    var passKey = document.getElementById('cryptoKeyInput').value.trim();
+                    if (!passKey) {
+                        appendChatMessage(data.sender, '[ЗАБЛОКИРОВАНО]: Введите пароль шифрования.');
+                        return;
+                    }
+
+                    // Дешифруем текст прямо внутри процессора вашего устройства
+                    try {
+                        var bytes = CryptoJS.AES.decrypt(data.encryptedText, passKey);
+                        var decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+                        if (!decryptedText) throw new Error();
+                        appendChatMessage(data.sender, decryptedText);
+                    } catch(e) {
+                        appendChatMessage(data.sender, '[ОШИБКА РАСШИФРОВКИ]: Неверный ключ.');
+                    }
+                }
+            });
+        }
+
+        // ПРЯМАЯ ОТПРАВКА С ИСПОЛЬЗОВАНИЕМ СКВОЗНОГО ШИФРОВАНИЯ
+        function transmitPacket() {
             var textInput = document.getElementById('messageInput');
-            var partnerInput = document.getElementById('partnerUinInput');
             var keyInput = document.getElementById('cryptoKeyInput');
             
             if (!textInput || textInput.value.trim() === '') return;
             
-            var targetPartner = partnerInput.value.trim();
             var passKey = keyInput.value.trim();
-
-            if (targetPartner.length !== 9) {
-                alert("ОШИБКА: Укажите 9-значный UIN соседа.");
+            if (!passKey) {
+                alert("ОШИБКА: Задайте пароль шифрования для защиты данных!");
                 return;
             }
-            if (!passKey) {
-                alert("ОШИБКА: Задайте ключ шифрования!");
+
+            // Пытаемся подключиться к соседу. Если он еще не открыл узел, функция предупредит об этом.
+            if (!connectToNeighbour() && (!conn || !conn.open)) {
+                alert("ОШИБКА: Укажите корректный 9-значный UIN соседа.");
                 return;
             }
 
             var rawMessage = textInput.value.trim();
-            var encrypted = cryptText(rawMessage, passKey);
+            
+            // Шифруем сообщение перед тем, как оно покинет ваш компьютер
+            var encrypted = CryptoJS.AES.encrypt(rawMessage, passKey).toString();
 
-            var packet = {
-                sender: myUIN,
-                target: targetPartner,
-                encryptedText: encrypted // Отправляем в эфир только зашифрованный хэш
-            };
-
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify(packet));
+            // Шлем пакет в интернет-эфир напрямую на IP-адрес соседа
+            if (conn && conn.open) {
+                conn.send({
+                    sender: myUIN,
+                    encryptedText: encrypted
+                });
+                appendChatMessage('Вы', rawMessage);
+                textInput.value = '';
             } else {
-                alert("ОШИБКА: Сеть не активна.");
-                return;
+                appendSystemMessage('[СИСТЕМА]: Устанавливаем мост связи, повторите отправку через 2 секунды...');
             }
-
-            appendChatMessage('Вы', rawMessage);
-            textInput.value = '';
         }
 
         function appendChatMessage(sender, text) {
@@ -271,7 +282,7 @@
             if (sender === 'Вы') {
                 msgDiv.innerHTML = '<span style="color: #ffffff;">[Вы]:</span> ' + text;
             } else {
-                msgDiv.innerHTML = '<span style="color: var(--text-neon);">[' + sender + ']:</span> ' + text;
+                msgDiv.innerHTML = '<span style="color: var(--text-neon);">[Node-' + sender + ']:</span> ' + text;
             }
             chatBox.appendChild(msgDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -288,11 +299,11 @@
         }
 
         window.addEventListener('DOMContentLoaded', function() {
-            initCryptoChat();
-            document.getElementById('sendBtn').onclick = sendEncryptedMessage;
+            initMeshServer();
+            document.getElementById('sendBtn').onclick = transmitPacket;
             document.body.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter' && document.activeElement.id === 'messageInput') {
-                    sendEncryptedMessage();
+                    transmitPacket();
                 }
             });
         });
